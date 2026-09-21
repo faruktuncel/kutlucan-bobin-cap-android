@@ -2,7 +2,10 @@ package com.kutlucantekstil.bobincap;
 
 import android.app.*;
 import android.os.Bundle;
-import android.content.*;\nimport android.net.Uri;\nimport java.io.*;\nimport java.util.zip.*;
+import android.content.*;
+import android.net.Uri;
+import java.io.*;
+import java.util.zip.*;
 import android.graphics.Color;
 import android.view.*;
 import android.view.inputmethod.InputMethodManager;
@@ -15,7 +18,8 @@ import java.util.Locale;
 public class MainActivity extends Activity {
     static final double CORE=140.0;
     LinearLayout root; Spinner width,material; EditText denier,filament,kg; TextView result,info;
-    double lastPred=0; JSONArray records;\n    static final int EXPORT_XLSX=901;
+    double lastPred=0; JSONArray records;
+    static final int EXPORT_XLSX=901;
     final String PREF="kutlucan_cal", KEY="records";
 
     @Override public void onCreate(Bundle b){super.onCreate(b); load(); build();}
@@ -38,7 +42,8 @@ public class MainActivity extends Activity {
       LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);
       Button ok=btn("TUTARLI");Button no=btn("TUTARLI DEĞİL");row.addView(ok,new LinearLayout.LayoutParams(0,-2,1));row.addView(no,new LinearLayout.LayoutParams(0,-2,1));add(row);
       ok.setOnClickListener(v->feedback("Tutarlı"));no.setOnClickListener(v->feedback("Tutarlı Değil"));
-      Button export=btn("TABLO ÇEK (EXCEL)");export.setOnClickListener(v->exportXlsx());add(export);\n      Button manual=btn("MANUEL KALİBRASYON");manual.setOnClickListener(v->manual());add(manual);
+      Button export=btn("TABLO ÇEK (EXCEL)");export.setOnClickListener(v->exportXlsx());add(export);
+      Button manual=btn("MANUEL KALİBRASYON");manual.setOnClickListener(v->manual());add(manual);
       Button hist=btn("KALİBRASYON GEÇMİŞİ");hist.setOnClickListener(v->history());add(hist);
       TextView foot=tv("Faruk Tunçel • 21.09.2026 • Versiyon 1.2",12);foot.setGravity(17);foot.setTextColor(0xff8fa9bf);foot.setPadding(8,30,8,10);add(foot);
       setContentView(sc);
@@ -75,7 +80,11 @@ public class MainActivity extends Activity {
       EditText ak=edit("Gerçek net kg");ak.setText(kg.getText());EditText ad=edit("Ölçülen gerçek dış çap (mm)");box.addView(ak);box.addView(ad);
       new AlertDialog.Builder(this).setTitle(source+" – Gerçek ölçüm").setView(box).setPositiveButton("Kalibre Et",(x,y)->{
         try{double m=val(ak),D=val(ad);double agreement=Math.max(0,100-Math.abs(lastPred-D)/D*100);addRecord(material.getSelectedItem().toString(),val(denier),val(filament),m,w(),D,source);
-          new AlertDialog.Builder(this).setTitle("Kalibre edilmiştir").setMessage(String.format(Locale.US,"Tahmin: %.1f mm\nGerçek: %.1f mm\nTutarlılık: %%%.1f\n\nBu üretim bundan sonraki hesaplamalara dahil edildi.",lastPred,D,agreement)).setPositiveButton("Tamam",null).show();
+          new AlertDialog.Builder(this).setTitle("Kalibre edilmiştir").setMessage(String.format(Locale.US,"Tahmin: %.1f mm
+Gerçek: %.1f mm
+Tutarlılık: %%%.1f
+
+Bu üretim bundan sonraki hesaplamalara dahil edildi.",lastPred,D,agreement)).setPositiveButton("Tamam",null).show();
         }catch(Exception e){toast("Gerçek kg ve çap değerlerini kontrol edin.");}
       }).setNegativeButton("İptal",null).show();
     }
@@ -89,7 +98,9 @@ public class MainActivity extends Activity {
     void addRecord(String mat,double d,double f,double k,int wi,double dia,String src)throws Exception{
       JSONObject r=new JSONObject();r.put("time",new SimpleDateFormat("dd.MM.yyyy HH:mm:ss",Locale.getDefault()).format(new Date()));r.put("material",mat);r.put("denier",d);r.put("filament",f);r.put("kg",k);r.put("width",wi);r.put("diameter",dia);r.put("source",src);records.put(r);save();info.setText("Kalibrasyon kaydı: "+records.length());
     }
-    void history(){StringBuilder s=new StringBuilder();for(int i=records.length()-1;i>=0&&i>=records.length()-30;i--)try{JSONObject r=records.getJSONObject(i);s.append(r.getString("time")).append(" • ").append(r.getString("material")).append(" • ").append(r.getDouble("denier")).append("/").append(r.getDouble("filament")).append(" • ").append(r.getInt("width")).append("mm • ").append(r.getDouble("kg")).append("kg • Ø").append(r.getDouble("diameter")).append("mm\n\n");}catch(Exception ignored){} new AlertDialog.Builder(this).setTitle("Kalibrasyon Geçmişi ("+records.length()+")").setMessage(s.toString()).setPositiveButton("Tamam",null).show();}
+    void history(){StringBuilder s=new StringBuilder();for(int i=records.length()-1;i>=0&&i>=records.length()-30;i--)try{JSONObject r=records.getJSONObject(i);s.append(r.getString("time")).append(" • ").append(r.getString("material")).append(" • ").append(r.getDouble("denier")).append("/").append(r.getDouble("filament")).append(" • ").append(r.getInt("width")).append("mm • ").append(r.getDouble("kg")).append("kg • Ø").append(r.getDouble("diameter")).append("mm
+
+");}catch(Exception ignored){} new AlertDialog.Builder(this).setTitle("Kalibrasyon Geçmişi ("+records.length()+")").setMessage(s.toString()).setPositiveButton("Tamam",null).show();}
     void load(){try{String s=getSharedPreferences(PREF,0).getString(KEY,null);records=s==null?seeds():new JSONArray(s);}catch(Exception e){records=seeds();}}
     void save(){getSharedPreferences(PREF,0).edit().putString(KEY,records.toString()).apply();}
     JSONArray seeds(){JSONArray a=new JSONArray();try{
@@ -131,5 +142,6 @@ public class MainActivity extends Activity {
       }
       s.append("</sheetData></worksheet>");zip(z,"xl/worksheets/sheet1.xml",s.toString());z.finish();z.close();
     }
-\n    void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
+
+    void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
 }
