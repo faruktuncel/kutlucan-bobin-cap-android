@@ -1,0 +1,14 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.kutlucantekstil.bobincap'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.kutlucantekstil.bobincap'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+}
