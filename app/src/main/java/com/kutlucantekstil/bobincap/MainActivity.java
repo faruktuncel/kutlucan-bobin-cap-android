@@ -2,7 +2,7 @@ package com.kutlucantekstil.bobincap;
 
 import android.app.*;
 import android.os.Bundle;
-import android.content.*;
+import android.content.*;\nimport android.net.Uri;\nimport java.io.*;\nimport java.util.zip.*;
 import android.graphics.Color;
 import android.view.*;
 import android.view.inputmethod.InputMethodManager;
@@ -15,7 +15,7 @@ import java.util.Locale;
 public class MainActivity extends Activity {
     static final double CORE=140.0;
     LinearLayout root; Spinner width,material; EditText denier,filament,kg; TextView result,info;
-    double lastPred=0; JSONArray records;
+    double lastPred=0; JSONArray records;\n    static final int EXPORT_XLSX=901;
     final String PREF="kutlucan_cal", KEY="records";
 
     @Override public void onCreate(Bundle b){super.onCreate(b); load(); build();}
@@ -27,7 +27,7 @@ public class MainActivity extends Activity {
       ScrollView sc=new ScrollView(this); root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(28,30,28,30);root.setBackgroundColor(0xff071b2e);sc.addView(root);
       TextView h=tv("KUTLUCAN TEKSTİL",24);h.setGravity(17);h.setTextColor(0xffffd166);add(h);
       TextView sub=tv("Ham İplik Bobin Çapı Hesaplama",19);sub.setGravity(17);add(sub);
-      TextView ver=tv("Android v1.0 • Kendi kendini kalibre eden model",12);ver.setGravity(17);ver.setTextColor(0xff9fb8ca);add(ver);
+      TextView ver=tv("Android v1.2 • EXE ile aynı hesaplama ve kalibrasyon modeli",12);ver.setGravity(17);ver.setTextColor(0xff9fb8ca);add(ver);
 
       add(tv("Masura genişliği",14)); width=new Spinner(this);width.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"150 mm","125 mm"}));add(width);
       add(tv("Materyal",14)); material=new Spinner(this);material.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"PA6","PA66","Diğer"}));add(material);
@@ -38,9 +38,9 @@ public class MainActivity extends Activity {
       LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);
       Button ok=btn("TUTARLI");Button no=btn("TUTARLI DEĞİL");row.addView(ok,new LinearLayout.LayoutParams(0,-2,1));row.addView(no,new LinearLayout.LayoutParams(0,-2,1));add(row);
       ok.setOnClickListener(v->feedback("Tutarlı"));no.setOnClickListener(v->feedback("Tutarlı Değil"));
-      Button manual=btn("MANUEL KALİBRASYON");manual.setOnClickListener(v->manual());add(manual);
+      Button export=btn("TABLO ÇEK (EXCEL)");export.setOnClickListener(v->exportXlsx());add(export);\n      Button manual=btn("MANUEL KALİBRASYON");manual.setOnClickListener(v->manual());add(manual);
       Button hist=btn("KALİBRASYON GEÇMİŞİ");hist.setOnClickListener(v->history());add(hist);
-      TextView foot=tv("Faruk Tunçel • 21.09.2026 • Versiyon 1.0",12);foot.setGravity(17);foot.setTextColor(0xff8fa9bf);foot.setPadding(8,30,8,10);add(foot);
+      TextView foot=tv("Faruk Tunçel • 21.09.2026 • Versiyon 1.2",12);foot.setGravity(17);foot.setTextColor(0xff8fa9bf);foot.setPadding(8,30,8,10);add(foot);
       setContentView(sc);
     }
     double val(EditText e){return Double.parseDouble(e.getText().toString().trim().replace(",","."));}
@@ -96,5 +96,40 @@ public class MainActivity extends Activity {
       seed(a,"PA6",70,24,4.500,150,286.0);seed(a,"PA6",20,24,6.775,150,348.2);seed(a,"PA6",70,68,9.000,125,425.0);seed(a,"PA6",40,34,9.000,150,402.0);seed(a,"PA6",40,34,4.553,150,299.0);
     }catch(Exception ignored){}return a;}
     void seed(JSONArray a,String mat,double d,double f,double k,int wi,double dia)throws Exception{JSONObject r=new JSONObject();r.put("time","Başlangıç");r.put("material",mat);r.put("denier",d);r.put("filament",f);r.put("kg",k);r.put("width",wi);r.put("diameter",dia);r.put("source","Gerçek üretim");a.put(r);}
-    void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
+
+    void exportXlsx(){
+      Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);
+      i.setType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      i.putExtra(Intent.EXTRA_TITLE,"Kutlucan_Kalibrasyon_Tablosu_"+new SimpleDateFormat("yyyyMMdd_HHmm",Locale.US).format(new Date())+".xlsx");
+      startActivityForResult(i,EXPORT_XLSX);
+    }
+    @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){
+      super.onActivityResult(requestCode,resultCode,data);
+      if(requestCode==EXPORT_XLSX && resultCode==RESULT_OK && data!=null){
+        try(OutputStream os=getContentResolver().openOutputStream(data.getData())){writeXlsx(os);toast("Excel tablosu kaydedildi.");}
+        catch(Exception e){toast("Excel oluşturulamadı: "+e.getMessage());}
+      }
+    }
+    String esc(String s){return s==null?"":s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;");}
+    String cell(String ref,String v){return "<c r=\""+ref+"\" t=\"inlineStr\"><is><t>"+esc(v)+"</t></is></c>";}
+    String num(String ref,double v){return "<c r=\""+ref+"\"><v>"+String.format(Locale.US,"%.6f",v)+"</v></c>";}
+    void zip(ZipOutputStream z,String name,String text)throws Exception{z.putNextEntry(new ZipEntry(name));z.write(text.getBytes("UTF-8"));z.closeEntry();}
+    void writeXlsx(OutputStream out)throws Exception{
+      ZipOutputStream z=new ZipOutputStream(out);
+      zip(z,"[Content_Types].xml","<?xml version=\"1.0\" encoding=\"UTF-8\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/><Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/></Types>");
+      zip(z,"_rels/.rels","<?xml version=\"1.0\" encoding=\"UTF-8\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/></Relationships>");
+      zip(z,"xl/workbook.xml","<?xml version=\"1.0\" encoding=\"UTF-8\"?><workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"Kalibrasyonlar\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>");
+      zip(z,"xl/_rels/workbook.xml.rels","<?xml version=\"1.0\" encoding=\"UTF-8\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/></Relationships>");
+      StringBuilder s=new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?><worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData>");
+      String[] h={"Tarih Saat","Materyal","Denye","Filament","Masura Genişliği mm","Çekirdek Çapı mm","Gerçek Net kg","Gerçek Dış Çap mm","Efektif Yoğunluk g/cm3","Kaynak"};
+      s.append("<row r=\"1\">");for(int j=0;j<h.length;j++)s.append(cell(Character.toString((char)('A'+j))+"1",h[j]));s.append("</row>");
+      for(int i=0;i<records.length();i++){JSONObject r=records.getJSONObject(i);int n=i+2;String N=""+n;
+        s.append("<row r=\"").append(n).append("\">").append(cell("A"+N,r.optString("time"))).append(cell("B"+N,r.optString("material")))
+        .append(num("C"+N,r.getDouble("denier"))).append(num("D"+N,r.getDouble("filament"))).append(num("E"+N,r.getInt("width"))).append(num("F"+N,CORE))
+        .append(num("G"+N,r.getDouble("kg"))).append(num("H"+N,r.getDouble("diameter"))).append(num("I"+N,density(r.getDouble("kg"),r.getInt("width"),r.getDouble("diameter"))))
+        .append(cell("J"+N,r.optString("source"))).append("</row>");
+      }
+      s.append("</sheetData></worksheet>");zip(z,"xl/worksheets/sheet1.xml",s.toString());z.finish();z.close();
+    }
+\n    void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
 }
